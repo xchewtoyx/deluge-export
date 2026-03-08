@@ -26,9 +26,13 @@ class LocalExtractor(BaseExtractor):
             raise FileNotFoundError(f"Torrent file not found at {src_file}")
 
         dest_dir.mkdir(parents=True, exist_ok=True)
-        out_name = (
-            f"{desired_name}.torrent" if desired_name else f"{torrent_id}.torrent"
-        )
+        if desired_name:
+            # Defensive sanitize: take only the basename to prevent path traversal
+            safe_name = Path(desired_name).name
+            out_name = f"{safe_name}.torrent"
+        else:
+            out_name = f"{torrent_id}.torrent"
+
         dest_file = dest_dir / out_name
 
         shutil.copy2(src_file, dest_file)
@@ -45,21 +49,26 @@ class HttpExtractor(BaseExtractor):
         url = f"{self.state_url}/{torrent_id}.torrent"
 
         dest_dir.mkdir(parents=True, exist_ok=True)
-        out_name = (
-            f"{desired_name}.torrent" if desired_name else f"{torrent_id}.torrent"
-        )
+        if desired_name:
+            safe_name = Path(desired_name).name
+            out_name = f"{safe_name}.torrent"
+        else:
+            out_name = f"{torrent_id}.torrent"
+
         dest_file = dest_dir / out_name
 
         try:
             with (
-                urllib.request.urlopen(url) as response,
+                urllib.request.urlopen(url, timeout=10) as response,
                 open(dest_file, "wb") as out_file,
             ):
                 shutil.copyfileobj(response, out_file)
         except urllib.error.HTTPError as e:
             if dest_file.exists():
                 dest_file.unlink()  # Cleanup partial/failed downloads
-            raise FileNotFoundError(
+            if e.code == 404:
+                raise FileNotFoundError(f"Torrent file not found at {url}")
+            raise ConnectionError(
                 f"Failed to download torrent file from {url}: HTTP {e.code}"
             )
         except urllib.error.URLError as e:

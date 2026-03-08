@@ -1,14 +1,19 @@
 from unittest.mock import patch, MagicMock
 from typer.testing import CliRunner
+from pathlib import Path
 from deluge_export.cli import app
 
 runner = CliRunner()
 
 
+@patch("deluge_export.cli.config.load_config")
 @patch("deluge_export.cli.client.get_client")
 @patch("deluge_export.cli.client.get_matching_torrents")
-@patch("deluge_export.extractor.get_extractor")
-def test_extract_command(mock_get_extractor, mock_get_torrents, mock_get_client):
+@patch("deluge_export.cli.get_extractor")
+def test_extract_command(
+    mock_get_extractor, mock_get_torrents, mock_get_client, mock_load_config, tmp_path
+):
+    mock_load_config.return_value = {}
     mock_client_instance = MagicMock()
     mock_get_client.return_value = mock_client_instance
     mock_extractor_instance = MagicMock()
@@ -24,6 +29,9 @@ def test_extract_command(mock_get_extractor, mock_get_torrents, mock_get_client)
         }
     ]
 
+    dest_dir = str(tmp_path / "extracted")
+    state_dir = str(tmp_path / "state")
+
     result = runner.invoke(
         app,
         [
@@ -31,9 +39,9 @@ def test_extract_command(mock_get_extractor, mock_get_torrents, mock_get_client)
             "--path-match",
             "2025/11",
             "--dest",
-            "/tmp/extracted",
+            dest_dir,
             "--state-dir",
-            "/tmp/state",
+            state_dir,
             "--host",
             "127.0.0.1",
             "--port",
@@ -44,10 +52,10 @@ def test_extract_command(mock_get_extractor, mock_get_torrents, mock_get_client)
     assert "Found 1 matching torrents" in result.stdout
     assert "Successfully extracted" in result.stdout
 
-    mock_get_extractor.assert_called_with(state_dir="/tmp/state", state_url=None)
+    mock_get_extractor.assert_called_with(state_dir=state_dir, state_url=None)
     mock_extractor_instance.extract.assert_called_once_with(
         "abc123def",
-        __import__("pathlib").Path("/tmp/extracted"),
+        Path(dest_dir),
         desired_name="Ubuntu 24.04",
     )
 
@@ -80,20 +88,7 @@ def test_list_command_mocked(mock_get_torrents, mock_get_client, mock_load_confi
     ]
 
     result = runner.invoke(
-        app,
-        [
-            "list",
-            "--path-match",
-            "iso",
-            "--host",
-            "127.0.0.1",
-            "--port",
-            "58846",
-            "--user",
-            "test",
-            "--password",
-            "test",
-        ],
+        app, ["list", "--path-match", "iso", "--user", "test", "--password", "test"]
     )
 
     assert result.exit_code == 0

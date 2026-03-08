@@ -72,11 +72,14 @@ If your terminal does not have direct filesystem access to the deluge box, you c
 ```bash
 # On the Deluge host:
 cd /volume1/@appdata/deluge/state/
-python3 -m http.server 8080
+python3 -m http.server 8080 --bind 127.0.0.1
 ```
 
-And then run `dle` with `--state-url`:
+> [!WARNING]
+> By default, `python3 -m http.server` will expose the directory to anyone on your local network. Always bind to localhost (`--bind 127.0.0.1`) and access it via an SSH tunnel, or use an authenticated file-sharing method to prevent exposing your `.torrent` files to untrusted networks.
+
+And then run `dle` with `--state-url` using the tunnel or localhost route:
 ```bash
-# On your local machine:
-dle extract --path-match "2025/11" --dest /path/to/extract/to --state-url http://bucket2:8080
+# On your local machine (assuming an SSH tunnel port forwards 8080 to localhost):
+dle extract --path-match "2025/11" --dest /path/to/extract/to --state-url http://127.0.0.1:8080
 ```

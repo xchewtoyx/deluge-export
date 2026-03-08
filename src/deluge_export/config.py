@@ -1,5 +1,7 @@
+import sys
+from functools import lru_cache
 from pathlib import Path
-from typing import Dict, Any
+from typing import Any, Dict
 
 try:
     import tomllib
@@ -7,6 +9,7 @@ except ModuleNotFoundError:
     import tomli as tomllib
 
 
+@lru_cache()
 def load_config() -> Dict[str, Any]:
     """
     Locates and parses the deluge-export config file if present.
@@ -20,8 +23,6 @@ def load_config() -> Dict[str, Any]:
         home / ".deluge-export.toml",
     ]
 
-    config_dict = {}
-
     for c_path in config_paths:
         if c_path.exists() and c_path.is_file():
             try:
@@ -29,21 +30,23 @@ def load_config() -> Dict[str, Any]:
                     full_config = tomllib.load(f)
 
                     # Extract the [deluge] section specifically
-                    if "deluge" in full_config:
-                        config_dict = full_config["deluge"]
-                    break  # Stop looking after we find one valid config
+                    deluge_section = full_config.get("deluge")
+                    if isinstance(deluge_section, dict):
+                        return deluge_section
+                    else:
+                        print(
+                            f"Warning: '[deluge]' section missing or invalid in {c_path}",
+                            file=sys.stderr,
+                        )
             except tomllib.TOMLDecodeError as e:
-                import sys
-
-                sys.stderr.write(
-                    f"Warning: Failed to parse TOML file at {c_path}: {e}\n"
+                print(
+                    f"Warning: Failed to parse TOML file at {c_path}: {e}",
+                    file=sys.stderr,
                 )
-            except Exception:
-                # Silently ignore other read errors
-                pass
+            except OSError as e:
+                print(
+                    f"Warning: Could not read config file at {c_path}: {e}",
+                    file=sys.stderr,
+                )
 
-    return config_dict
-
-
-# Load default config upon import
-DEFAULT_CONFIG = load_config()
+    return {}

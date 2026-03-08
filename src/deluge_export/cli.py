@@ -1,34 +1,65 @@
 import typer
+from pathlib import Path
 from typing_extensions import Annotated
 from deluge_export import client, config
+from deluge_export.extractor import get_extractor
 
 app = typer.Typer(help="Extracts torrents from a deluge server matching a pattern.")
+
+
+def _get_connection_params(
+    host: str | None, port: int | None, user: str | None, password: str | None
+) -> tuple[str, int, str, str]:
+    conf = config.load_config()
+    final_host = str(host if host is not None else conf.get("host", "127.0.0.1"))
+    raw_port = port if port is not None else conf.get("port", 58846)
+    try:
+        final_port = int(raw_port)
+    except (ValueError, TypeError):
+        typer.echo(
+            f"Error: Invalid port value '{raw_port}'. Port must be an integer.",
+            err=True,
+        )
+        raise typer.Exit(code=1)
+    final_user = str(user if user is not None else conf.get("user", ""))
+    final_password = str(password if password is not None else conf.get("password", ""))
+
+    return final_host, final_port, final_user, final_password
 
 
 @app.command("list")
 def list_command(
     path_match: Annotated[
-        str, typer.Option("--path-match", help="Pattern to match the path against")
+        str,
+        typer.Option(
+            "--path-match",
+            help="Pattern to match the torrent name or save path against",
+        ),
     ],
     host: Annotated[
-        str, typer.Option("--host", envvar="DELUGE_HOST", help="Deluge daemon host")
-    ] = config.DEFAULT_CONFIG.get("host", "127.0.0.1"),
+        str | None,
+        typer.Option("--host", envvar="DELUGE_HOST", help="Deluge daemon host"),
+    ] = None,
     port: Annotated[
-        int, typer.Option("--port", envvar="DELUGE_PORT", help="Deluge daemon port")
-    ] = config.DEFAULT_CONFIG.get("port", 58846),
+        int | None,
+        typer.Option("--port", envvar="DELUGE_PORT", help="Deluge daemon port"),
+    ] = None,
     user: Annotated[
-        str, typer.Option("--user", envvar="DELUGE_USER", help="Deluge RPC username")
-    ] = config.DEFAULT_CONFIG.get("user", ""),
+        str | None,
+        typer.Option("--user", envvar="DELUGE_USER", help="Deluge RPC username"),
+    ] = None,
     password: Annotated[
-        str,
+        str | None,
         typer.Option(
             "--password", envvar="DELUGE_PASSWORD", help="Deluge RPC password"
         ),
-    ] = config.DEFAULT_CONFIG.get("password", ""),
+    ] = None,
 ):
     """
-    List torrents matching a specified path pattern from the deluge server.
+    List torrents matching a specified name or path pattern from the deluge server.
     """
+    host, port, user, password = _get_connection_params(host, port, user, password)
+
     typer.echo(f"Connecting to Deluge at {host}:{port}...")
     try:
         deluge_client = client.get_client(host, port, user, password)
@@ -59,59 +90,65 @@ def list_command(
 @app.command()
 def extract(
     path_match: Annotated[
-        str, typer.Option("--path-match", help="Pattern to match the path against")
+        str,
+        typer.Option(
+            "--path-match",
+            help="Pattern to match the torrent name or save path against",
+        ),
     ],
     dest: Annotated[
         str,
         typer.Option("--dest", help="Destination path to extract .torrent files to"),
     ],
     state_dir: Annotated[
-        str,
+        str | None,
         typer.Option("--state-dir", help="Local path to the deluge state directory"),
-    ] = "",
+    ] = None,
     state_url: Annotated[
-        str, typer.Option("--state-url", help="HTTP URL to the deluge state directory")
-    ] = "",
+        str | None,
+        typer.Option("--state-url", help="HTTP URL to the deluge state directory"),
+    ] = None,
     host: Annotated[
-        str, typer.Option("--host", envvar="DELUGE_HOST", help="Deluge daemon host")
-    ] = config.DEFAULT_CONFIG.get("host", "127.0.0.1"),
+        str | None,
+        typer.Option("--host", envvar="DELUGE_HOST", help="Deluge daemon host"),
+    ] = None,
     port: Annotated[
-        int, typer.Option("--port", envvar="DELUGE_PORT", help="Deluge daemon port")
-    ] = config.DEFAULT_CONFIG.get("port", 58846),
+        int | None,
+        typer.Option("--port", envvar="DELUGE_PORT", help="Deluge daemon port"),
+    ] = None,
     user: Annotated[
-        str, typer.Option("--user", envvar="DELUGE_USER", help="Deluge RPC username")
-    ] = config.DEFAULT_CONFIG.get("user", ""),
+        str | None,
+        typer.Option("--user", envvar="DELUGE_USER", help="Deluge RPC username"),
+    ] = None,
     password: Annotated[
-        str,
+        str | None,
         typer.Option(
             "--password", envvar="DELUGE_PASSWORD", help="Deluge RPC password"
         ),
-    ] = config.DEFAULT_CONFIG.get("password", ""),
+    ] = None,
 ):
     """
-    Export .torrent files matching a specified path pattern to a destination directory.
+    Extract torrents matching a specified name or path pattern to a destination directory.
     """
-    if not state_dir and not state_url:
+    host, port, user, password = _get_connection_params(host, port, user, password)
+
+    if state_dir is None and state_url is None:
         typer.echo(
             "Error: You must provide either --state-dir or --state-url to locate the .torrent files.",
             err=True,
         )
         raise typer.Exit(code=1)
-    if state_dir and state_url:
+    if state_dir is not None and state_url is not None:
         typer.echo("Error: Cannot provide both --state-dir and --state-url.", err=True)
         raise typer.Exit(code=1)
 
-    from deluge_export.extractor import get_extractor
-
     try:
-        extractor = get_extractor(
-            state_dir=state_dir or None, state_url=state_url or None
-        )
+        extractor = get_extractor(state_dir=state_dir, state_url=state_url)
     except Exception as e:
         typer.echo(f"Error initializing extractor: {e}", err=True)
         raise typer.Exit(code=1)
 
-    dest_path = __import__("pathlib").Path(dest)
+    dest_path = Path(dest)
     dest_path.mkdir(parents=True, exist_ok=True)
 
     typer.echo(f"Connecting to Deluge at {host}:{port}...")
@@ -151,6 +188,9 @@ def extract(
         typer.echo(
             f"\nSuccessfully extracted {success_count}/{len(matches)} .torrent files."
         )
+
+        if success_count != len(matches):
+            raise typer.Exit(code=1)
 
     except Exception as e:
         typer.echo(f"Error: {e}", err=True)
