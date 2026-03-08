@@ -1,0 +1,32 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "deluge-export"
+version = "0.1.0"
+description = "Extracts torrents from a deluge server matching a pattern."
+authors = [
+    { name = "Author Placeholder", email = "author@example.com" }
+]
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "typer>=0.9.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "ruff>=0.1.0",
+]
+
+[project.scripts]
+dle = "deluge_export.cli:app"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/deluge_export"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py310"
