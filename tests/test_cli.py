@@ -33,7 +33,7 @@ def test_extract_command(mock_get_extractor, mock_get_torrents, mock_get_client)
     assert "Successfully extracted" in result.stdout
     
     mock_get_extractor.assert_called_with(state_dir="/tmp/state", state_url=None)
-    mock_extractor_instance.extract.assert_called_once()
+    mock_extractor_instance.extract.assert_called_once_with("abc123def", __import__("pathlib").Path("/tmp/extracted"), desired_name="Ubuntu 24.04")
 
 
 def test_help():

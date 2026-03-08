@@ -89,9 +89,15 @@ def extract(
         for idx, match in enumerate(matches, 1):
             torrent_id = match['id']
             name = match['name']
-            typer.echo(f"[{idx}/{len(matches)}] Extracting {name} ({torrent_id})...", nl=False)
+            
+            # Sanitize the torrent name for the filesystem
+            safe_name = "".join(c for c in name if c.isalnum() or c in " ._-").strip()
+            if not safe_name:
+                safe_name = torrent_id
+
+            typer.echo(f"[{idx}/{len(matches)}] Extracting {name}...", nl=False)
             try:
-                out_file = extractor.extract(torrent_id, dest_path)
+                out_file = extractor.extract(torrent_id, dest_path, desired_name=safe_name)
                 typer.echo(f" Done! -> {out_file.name}")
                 success_count += 1
             except Exception as e:
