@@ -6,12 +6,34 @@ from deluge_export.cli import app
 runner = CliRunner()
 
 
-def test_extract_command():
+@patch("deluge_export.cli.client.get_client")
+@patch("deluge_export.cli.client.get_matching_torrents")
+@patch("deluge_export.cli.get_extractor")
+def test_extract_command(mock_get_extractor, mock_get_torrents, mock_get_client):
+    mock_client_instance = MagicMock()
+    mock_get_client.return_value = mock_client_instance
+    mock_extractor_instance = MagicMock()
+    mock_get_extractor.return_value = mock_extractor_instance
+
+    mock_get_torrents.return_value = [
+        {
+            "id": "abc123def",
+            "name": "Ubuntu 24.04",
+            "save_path": "/downloads/iso/Ubuntu 24.04",
+            "size": 2500000000,
+            "state": "Seeding"
+        }
+    ]
+
     result = runner.invoke(
-        app, ["extract", "--path-match", "2025/11", "--dest", "/tmp/extracted"]
+        app, ["extract", "--path-match", "2025/11", "--dest", "/tmp/extracted", "--state-dir", "/tmp/state"]
     )
     assert result.exit_code == 0
-    assert "Extracting torrents matching '2025/11' to '/tmp/extracted'" in result.stdout
+    assert "Found 1 matching torrents" in result.stdout
+    assert "Successfully extracted" in result.stdout
+    
+    mock_get_extractor.assert_called_with(state_dir="/tmp/state", state_url=None)
+    mock_extractor_instance.extract.assert_called_once()
 
 
 def test_help():

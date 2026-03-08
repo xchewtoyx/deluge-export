@@ -56,10 +56,27 @@ dle list --path-match "202[45]/11"
 dle list --path-match "Ubuntu" --host bucket2 --user localclient --password supersecret
 ```
 
-### Extracting Torrents (WIP)
+### Extracting Torrents
 
-_The logic to extract completed matching torrents to local disk is currently under active development._
+To formally extract the `.torrent` files matching your string or RegEx pattern, use the `extract` command. Because the torrent files exist locally inside the deluge container's runtime directory (often `/volume1/@appdata/deluge/state/`), `dle` must be given a method to retrieve them.
 
+You MUST provide either a `--state-dir` (if the deluge state directory is mounted locally), or a `--state-url` (if the state directory is being served by a lightweight HTTP server).
+
+#### Extract via mounted path (`--state-dir`)
 ```bash
-dle extract --path-match "2025/11" --dest /path/to/extract/to
+dle extract --path-match "2025/11" --dest /path/to/extract/to --state-dir /path/to/mounted/deluge/state/
+```
+
+#### Extract via HTTP server (`--state-url`)
+If your terminal does not have direct filesystem access to the deluge box, you can run a simple python static server in the deluge state directory on the host:
+```bash
+# On the Deluge host:
+cd /volume1/@appdata/deluge/state/
+python3 -m http.server 8080
+```
+
+And then run `dle` with `--state-url`:
+```bash
+# On your local machine:
+dle extract --path-match "2025/11" --dest /path/to/extract/to --state-url http://bucket2:8080
 ```
