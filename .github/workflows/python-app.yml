@@ -13,7 +13,7 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-
+    steps:
       - uses: actions/checkout@v4
       
       - name: Set up Python 3.10
@@ -45,4 +45,3 @@ jobs:
         with:
           pytest-coverage-path: ./pytest-coverage.txt
           junitxml-path: ./pytest.xml
-        junitxml-path: ./pytest.xml
