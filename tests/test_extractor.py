@@ -1,6 +1,5 @@
 import pytest
 from pathlib import Path
-import urllib.request
 import urllib.error
 from unittest.mock import patch, MagicMock
 

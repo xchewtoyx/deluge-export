@@ -7,6 +7,26 @@ from deluge_export.extractor import get_extractor
 app = typer.Typer(help="Extracts torrents from a deluge server matching a pattern.")
 
 
+def _get_connection_params(
+    host: str | None, port: int | None, user: str | None, password: str | None
+) -> tuple[str, int, str, str]:
+    conf = config.load_config()
+    final_host = str(host if host is not None else conf.get("host", "127.0.0.1"))
+    raw_port = port if port is not None else conf.get("port", 58846)
+    try:
+        final_port = int(raw_port)
+    except (ValueError, TypeError):
+        typer.echo(
+            f"Error: Invalid port value '{raw_port}'. Port must be an integer.",
+            err=True,
+        )
+        raise typer.Exit(code=1)
+    final_user = str(user if user is not None else conf.get("user", ""))
+    final_password = str(password if password is not None else conf.get("password", ""))
+
+    return final_host, final_port, final_user, final_password
+
+
 @app.command("list")
 def list_command(
     path_match: Annotated[
@@ -38,19 +58,7 @@ def list_command(
     """
     List torrents matching a specified name or path pattern from the deluge server.
     """
-    conf = config.load_config()
-    host = str(host if host is not None else conf.get("host", "127.0.0.1"))
-    raw_port = port if port is not None else conf.get("port", 58846)
-    try:
-        port = int(raw_port)
-    except (ValueError, TypeError):
-        typer.echo(
-            f"Error: Invalid port value '{raw_port}'. Port must be an integer.",
-            err=True,
-        )
-        raise typer.Exit(code=1)
-    user = str(user if user is not None else conf.get("user", ""))
-    password = str(password if password is not None else conf.get("password", ""))
+    host, port, user, password = _get_connection_params(host, port, user, password)
 
     typer.echo(f"Connecting to Deluge at {host}:{port}...")
     try:
@@ -122,19 +130,7 @@ def extract(
     """
     Extract torrents matching a specified name or path pattern to a destination directory.
     """
-    conf = config.load_config()
-    host = str(host if host is not None else conf.get("host", "127.0.0.1"))
-    raw_port = port if port is not None else conf.get("port", 58846)
-    try:
-        port = int(raw_port)
-    except (ValueError, TypeError):
-        typer.echo(
-            f"Error: Invalid port value '{raw_port}'. Port must be an integer.",
-            err=True,
-        )
-        raise typer.Exit(code=1)
-    user = str(user if user is not None else conf.get("user", ""))
-    password = str(password if password is not None else conf.get("password", ""))
+    host, port, user, password = _get_connection_params(host, port, user, password)
 
     if state_dir is None and state_url is None:
         typer.echo(
@@ -192,6 +188,9 @@ def extract(
         typer.echo(
             f"\nSuccessfully extracted {success_count}/{len(matches)} .torrent files."
         )
+
+        if success_count != len(matches):
+            raise typer.Exit(code=1)
 
     except Exception as e:
         typer.echo(f"Error: {e}", err=True)
