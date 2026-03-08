@@ -1,0 +1,48 @@
+name: Python application
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+
+permissions:
+  contents: read
+  pull-requests: write  # For creating/updating pull request comments
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .[dev]
+          
+      - name: Lint with Ruff
+        run: |
+          ruff check .
+          
+      - name: Format Check with Ruff
+        run: |
+          # Fail if format would produce changes
+          ruff format --check .
+
+      - name: Test with pytest
+        run: |
+          pytest --cov=src/deluge_export --junitxml=pytest.xml --cov-report=term-missing:skip-covered tests/ | tee pytest-coverage.txt
+
+      - name: Publish Pytest Coverage Comment
+        uses: MishaKav/pytest-coverage-comment@main
+        if: always()
+        with:
+          pytest-coverage-path: ./pytest-coverage.txt
+          junitxml-path: ./pytest.xml
+        junitxml-path: ./pytest.xml
