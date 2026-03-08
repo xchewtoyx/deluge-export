@@ -37,4 +37,11 @@ jobs:
 
     - name: Test with pytest
       run: |
-        pytest tests/
+        pytest --cov=src/deluge_export --junitxml=pytest.xml --cov-report=term-missing:skip-covered tests/ | tee pytest-coverage.txt
+
+    - name: Publish Pytest Coverage Comment
+      uses: MishaKav/pytest-coverage-comment@main
+      if: always()
+      with:
+        pytest-coverage-path: ./pytest-coverage.txt
+        junitxml-path: ./pytest.xml
