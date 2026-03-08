@@ -1,20 +1,31 @@
 import typer
 from typing_extensions import Annotated
-from deluge_export import client
+from deluge_export import client, config
 
 app = typer.Typer(help="Extracts torrents from a deluge server matching a pattern.")
 
 @app.command("list")
 def list_command(
     path_match: Annotated[str, typer.Option("--path-match", help="Pattern to match the torrent name or save path against")],
-    host: Annotated[str, typer.Option("--host", help="Deluge daemon host")] = "127.0.0.1",
-    port: Annotated[int, typer.Option("--port", help="Deluge daemon port")] = 58846,
-    user: Annotated[str, typer.Option("--user", help="Deluge RPC username")] = "",
-    password: Annotated[str, typer.Option("--password", help="Deluge RPC password")] = ""
+    host: Annotated[str | None, typer.Option("--host", envvar="DELUGE_HOST", help="Deluge daemon host")] = None,
+    port: Annotated[int | None, typer.Option("--port", envvar="DELUGE_PORT", help="Deluge daemon port")] = None,
+    user: Annotated[str | None, typer.Option("--user", envvar="DELUGE_USER", help="Deluge RPC username")] = None,
+    password: Annotated[str | None, typer.Option("--password", envvar="DELUGE_PASSWORD", help="Deluge RPC password")] = None,
 ):
     """
     List torrents matching a specified name or path pattern from the deluge server.
     """
+    conf = config.load_config()
+    host = str(host if host is not None else conf.get("host", "127.0.0.1"))
+    raw_port = port if port is not None else conf.get("port", 58846)
+    try:
+        port = int(raw_port)
+    except (ValueError, TypeError):
+        typer.echo(f"Error: Invalid port value '{raw_port}'. Port must be an integer.", err=True)
+        raise typer.Exit(code=1)
+    user = str(user if user is not None else conf.get("user", ""))
+    password = str(password if password is not None else conf.get("password", ""))
+
     typer.echo(f"Connecting to Deluge at {host}:{port}...")
     try:
         deluge_client = client.get_client(host, port, user, password)
