@@ -6,14 +6,14 @@ app = typer.Typer(help="Extracts torrents from a deluge server matching a patter
 
 @app.command("list")
 def list_command(
-    path_match: Annotated[str, typer.Option("--path-match", help="Pattern to match the path against")],
+    path_match: Annotated[str, typer.Option("--path-match", help="Pattern to match the torrent name or save path against")],
     host: Annotated[str, typer.Option("--host", envvar="DELUGE_HOST", help="Deluge daemon host")] = config.DEFAULT_CONFIG.get("host", "127.0.0.1"),
     port: Annotated[int, typer.Option("--port", envvar="DELUGE_PORT", help="Deluge daemon port")] = config.DEFAULT_CONFIG.get("port", 58846),
     user: Annotated[str, typer.Option("--user", envvar="DELUGE_USER", help="Deluge RPC username")] = config.DEFAULT_CONFIG.get("user", ""),
     password: Annotated[str, typer.Option("--password", envvar="DELUGE_PASSWORD", help="Deluge RPC password")] = config.DEFAULT_CONFIG.get("password", "")
 ):
     """
-    List torrents matching a specified path pattern from the deluge server.
+    List torrents matching a specified name or path pattern from the deluge server.
     """
     typer.echo(f"Connecting to Deluge at {host}:{port}...")
     try:
@@ -45,12 +45,12 @@ def list_command(
 @app.command()
 def extract(
     path_match: Annotated[
-        str, typer.Option("--path-match", help="Pattern to match the path against")
+        str, typer.Option("--path-match", help="Pattern to match the torrent name or save path against")
     ],
     dest: Annotated[str, typer.Option("--dest", help="Destination path to extract to")],
 ):
     """
-    Extract torrents matching a specified path pattern to a destination directory.
+    Extract torrents matching a specified name or path pattern to a destination directory.
     """
     typer.echo(f"Extracting torrents matching '{path_match}' to '{dest}'")
     # Implementation logic will go here
