@@ -16,10 +16,15 @@ def list_command(
     List torrents matching a specified name or path pattern from the deluge server.
     """
     conf = config.load_config()
-    host = host if host is not None else conf.get("host", "127.0.0.1")
-    port = port if port is not None else conf.get("port", 58846)
-    user = user if user is not None else conf.get("user", "")
-    password = password if password is not None else conf.get("password", "")
+    host = str(host if host is not None else conf.get("host", "127.0.0.1"))
+    raw_port = port if port is not None else conf.get("port", 58846)
+    try:
+        port = int(raw_port)
+    except (ValueError, TypeError):
+        typer.echo(f"Error: Invalid port value '{raw_port}'. Port must be an integer.", err=True)
+        raise typer.Exit(code=1)
+    user = str(user if user is not None else conf.get("user", ""))
+    password = str(password if password is not None else conf.get("password", ""))
 
     typer.echo(f"Connecting to Deluge at {host}:{port}...")
     try:

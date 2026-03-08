@@ -43,8 +43,10 @@ def load_config() -> Dict[str, Any]:
                     f"Warning: Failed to parse TOML file at {c_path}: {e}",
                     file=sys.stderr,
                 )
-            except Exception:
-                # Silently ignore other read errors
-                pass
+            except OSError as e:
+                print(
+                    f"Warning: Could not read config file at {c_path}: {e}",
+                    file=sys.stderr,
+                )
 
     return {}
