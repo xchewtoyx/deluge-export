@@ -1,4 +1,3 @@
-import pytest
 from unittest.mock import patch, MagicMock
 from typer.testing import CliRunner
 from deluge_export.cli import app
@@ -8,7 +7,7 @@ runner = CliRunner()
 
 @patch("deluge_export.cli.client.get_client")
 @patch("deluge_export.cli.client.get_matching_torrents")
-@patch("deluge_export.cli.get_extractor")
+@patch("deluge_export.extractor.get_extractor")
 def test_extract_command(mock_get_extractor, mock_get_torrents, mock_get_client):
     mock_client_instance = MagicMock()
     mock_get_client.return_value = mock_client_instance
@@ -44,10 +43,12 @@ def test_help():
     assert "extract" in result.stdout
 
 
+@patch("deluge_export.cli.config.load_config")
 @patch("deluge_export.cli.client.get_client")
 @patch("deluge_export.cli.client.get_matching_torrents")
-def test_list_command_mocked(mock_get_torrents, mock_get_client):
+def test_list_command_mocked(mock_get_torrents, mock_get_client, mock_load_config):
     # Setup mock responses
+    mock_load_config.return_value = {}
     mock_client_instance = MagicMock()
     mock_get_client.return_value = mock_client_instance
     
